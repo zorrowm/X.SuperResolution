@@ -81,26 +81,26 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="14" />
+        <Setter Property="CornerRadius" Value="10" />
         <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}" />
     </Style>
     <Style Selector="Border.InnerPanel">
         <Setter Property="Background" Value="{DynamicResource SubtleSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="6" />
     </Style>
     <Style Selector="Border.TaskItem">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="CornerRadius" Value="6" />
     </Style>
     <Style Selector="Border.SettingsGroup">
         <Setter Property="Background" Value="{DynamicResource SubtleSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="ClipToBounds" Value="True" />
     </Style>
     <Style Selector="Border.SettingRow">
@@ -115,9 +115,9 @@
     </Style>
 
     <Style Selector="Button">
-        <Setter Property="MinHeight" Value="38" />
-        <Setter Property="Padding" Value="15,8" />
-        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="MinHeight" Value="40" />
+        <Setter Property="Padding" Value="15,10" />
+        <Setter Property="CornerRadius" Value="9" />
         <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         <Setter Property="Background" Value="{DynamicResource ElevatedSurfaceBrush}" />
@@ -607,7 +607,7 @@
         <Setter Property="BorderThickness" Value="0" />
     </Style>
     <Style Selector="TextBox">
-        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="CornerRadius" Value="8" />
         <Setter Property="Background" Value="{DynamicResource ElevatedSurfaceBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
@@ -1085,6 +1085,10 @@
                 <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="0.25,0.1,0.25,1" />
             </Transitions>
         </Setter>
+    </Style>
+    <!-- Allow the lifted hover surface to extend above the button's layout bounds. -->
+    <Style Selector="Button.PrimaryAction, Button.SecondaryAction">
+        <Setter Property="ClipToBounds" Value="False" />
     </Style>
     <Style Selector="Button:not(.WindowAction) /template/ Border#ButtonSurface">
         <Setter Property="RenderTransform" Value="translateY(0px) scale(1)" />

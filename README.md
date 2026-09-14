@@ -34,7 +34,7 @@
 | 完整包 `full` | 已包含，无需单独安装 .NET | 已包含 |
 | 精简包 `thin` | 需要安装 .NET 10 x64 Runtime | 需要另行补齐 |
 
-两种发布脚本都会复制原生引擎所需的 `vcomp140.dll`。请保留完整的解压目录，不要只移动主程序。
+两种发布模式均将托管程序集和原生引擎合并到单个 `X.SuperResolution.exe`，并复制所需的 `vcomp140.dll`；Full 模式同时内置 .NET 运行时。模型文件仍位于程序旁，需要保持完整的目录结构。
 
 ## 快速开始
 
@@ -90,7 +90,7 @@ dotnet run --project .\X.SuperResolution\X.SuperResolution.csproj --no-build
 
 ## 构建发布包
 
-发布脚本需要 .NET 10 SDK、7-Zip（`7z` 命令）以及上述 Visual C++ OpenMP 运行库。生成安装程序还需要 NSIS（`makensis` 命令）。
+发布脚本需要 .NET 10 SDK、7-Zip（`7z` 命令）以及上述 Visual C++ OpenMP 运行库。生成安装程序还需要 NSIS 3 Unicode、MSVC C++ 编译器和 Windows SDK；安装包脚本会自动查找这些工具。
 
 ```powershell
 # 完整包：包含运行时与模型
@@ -99,7 +99,7 @@ dotnet run --project .\X.SuperResolution\X.SuperResolution.csproj --no-build
 # 精简包：不包含运行时与模型
 .\scripts\publish-win-x64-thin.ps1
 
-# Windows 安装程序：自动构建完整包后打包
+# Windows 无边框安装程序：自动发布 Full 单文件客户端后打包
 .\scripts\build-installer.ps1
 ```
 
@@ -107,9 +107,9 @@ dotnet run --project .\X.SuperResolution\X.SuperResolution.csproj --no-build
 | --- | --- |
 | 完整包 | `artifacts/packages/X.SuperResolution-win-x64-full.7z` |
 | 精简包 | `artifacts/packages/X.SuperResolution-win-x64-thin.7z` |
-| 安装程序 | `artifacts/installer/X.SuperResolution-win-x64.exe` |
+| 安装程序 | `artifacts/installer/X.SuperResolution-Setup-<版本>-win-x64.exe` |
 
-完整包和精简包共用发布输出目录，应依次构建。更多安装程序选项见 [installer/README.md](installer/README.md)。
+Full 与 Thin 分别发布到 `artifacts/publish/win-x64-full/` 和 `artifacts/publish/win-x64-thin/`。安装程序采用石墨／雾白无边框界面，自动生成版本、文件清单与主题资源，支持原位升级，并在卸载时保留图片、output 和 settings.json。更多选项见 [installer/README.md](installer/README.md)。
 
 ## 常见问题
 

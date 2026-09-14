@@ -1,10 +1,9 @@
-bin/
+﻿bin/
 obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
 .vs/
 artifacts/
-installer/Generated.AppInfo.nsh
-installer/Generated.WizardImage.bmp
+installer/generated/
 .agent/

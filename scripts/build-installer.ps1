@@ -1,89 +1,29 @@
+[CmdletBinding()]
 param(
-    [string]$Configuration = "Release",
-    [switch]$SkipFullPublish
+    [string]$Configuration = 'Release',
+    [Alias('SkipFullPublish')][switch]$SkipPublish,
+    [string]$PublishDir,
+    [string]$MakeNsisPath
 )
-
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
-$ScriptRoot = $PSScriptRoot
-$RepoRoot = (Resolve-Path -LiteralPath (Join-Path $ScriptRoot "..")).Path
-$FullPublishScript = Join-Path $ScriptRoot "publish-win-x64-full.ps1"
-$NsisScript = Join-Path $RepoRoot "installer\X.SuperResolution.nsi"
-$NsisScriptRelative = "installer\X.SuperResolution.nsi"
-$InstallerOutputDir = Join-Path $RepoRoot "artifacts\installer"
-$FinalInstallerName = "X.SuperResolution-win-x64.exe"
-$FinalInstallerPath = Join-Path $InstallerOutputDir $FinalInstallerName
-
-function Require-Command {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Name
-    )
-
-    $command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($null -eq $command) {
-        throw "Required command '$Name' was not found in PATH."
-    }
-
-    return $command.Source
+$ErrorActionPreference = 'Stop'
+$repoRoot = Split-Path -Parent $PSScriptRoot
+if (-not $PublishDir) { $PublishDir = Join-Path $repoRoot 'artifacts\publish\win-x64-full' }
+$PublishDir = [IO.Path]::GetFullPath($PublishDir)
+if (-not $MakeNsisPath) {
+    $command = Get-Command makensis -ErrorAction SilentlyContinue
+    $MakeNsisPath = if ($command) { $command.Source } else { Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe' }
 }
-
-function Invoke-Checked {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath,
-
-        [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
-    )
-
-    & $FilePath @Arguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "Command failed with exit code $LASTEXITCODE`: $FilePath $($Arguments -join ' ')"
-    }
+if (-not (Test-Path -LiteralPath $MakeNsisPath)) { throw 'NSIS 3 Unicode is required. Install NSIS or pass -MakeNsisPath.' }
+if (-not $SkipPublish) {
+    if ($PublishDir -ne (Join-Path $repoRoot 'artifacts\publish\win-x64-full')) { throw 'Use -SkipPublish with a custom prebuilt PublishDir.' }
+    & (Join-Path $PSScriptRoot 'publish-win-x64-full.ps1') -Configuration $Configuration -SkipArchive
 }
-
-if (-not (Test-Path -LiteralPath $NsisScript)) {
-    throw "NSIS script not found: $NsisScript"
-}
-
-if (-not $SkipFullPublish) {
-    if (-not (Test-Path -LiteralPath $FullPublishScript)) {
-        throw "Full publish script not found: $FullPublishScript"
-    }
-
-    Write-Host "Building full self-contained publish output for installer..."
-    & $FullPublishScript -Configuration $Configuration
-    if ($LASTEXITCODE -ne 0) {
-        throw "Full publish script failed with exit code $LASTEXITCODE."
-    }
-}
-
-$MakeNsis = Require-Command "makensis"
-New-Item -ItemType Directory -Path $InstallerOutputDir -Force | Out-Null
-
-if (Test-Path -LiteralPath $FinalInstallerPath) {
-    Remove-Item -LiteralPath $FinalInstallerPath -Force
-}
-
-Write-Host "Building NSIS installer..."
-Push-Location $RepoRoot
-try {
-    Invoke-Checked $MakeNsis @($NsisScriptRelative)
-}
-finally {
-    Pop-Location
-}
-
-$GeneratedInstaller = Get-ChildItem -LiteralPath $InstallerOutputDir -Filter "*.exe" |
-    Where-Object { $_.Name -ne $FinalInstallerName } |
-    Sort-Object LastWriteTime -Descending |
-    Select-Object -First 1
-
-if ($null -eq $GeneratedInstaller) {
-    throw "NSIS completed, but no generated installer exe was found in: $InstallerOutputDir"
-}
-
-Move-Item -LiteralPath $GeneratedInstaller.FullName -Destination $FinalInstallerPath -Force
-Write-Host "Done: $FinalInstallerPath"
+& $MakeNsisPath /V3 "/DPUBLISH_DIR=$PublishDir" "/DCONFIGURATION=$Configuration" (Join-Path $repoRoot 'installer\X.SuperResolution.nsi')
+if ($LASTEXITCODE -ne 0) { throw "NSIS compilation failed ($LASTEXITCODE)." }
+$build = Get-Content -LiteralPath (Join-Path $repoRoot 'installer\generated\build-info.json') -Raw | ConvertFrom-Json
+if (-not (Test-Path -LiteralPath $build.InstallerPath)) { throw 'The expected installer was not created.' }
+$hash = Get-FileHash -LiteralPath $build.InstallerPath -Algorithm SHA256
+[IO.File]::WriteAllText(($build.InstallerPath + '.sha256'), "$($hash.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($build.InstallerPath))`n", [Text.UTF8Encoding]::new($false))
+Write-Host "Installer: $($build.InstallerPath)"
+Write-Host "SHA256:    $($hash.Hash)"

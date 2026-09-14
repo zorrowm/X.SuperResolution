@@ -1,181 +1,251 @@
 ﻿Unicode true
-SetCompressor /SOLID lzma
 ManifestDPIAware true
+ManifestDPIAwareness PerMonitorV2
 ManifestSupportedOS all
+SetCompressor /SOLID lzma
+SetCompressorDictSize 32
+!cd "${__FILEDIR__}"
 
-!define PROJECT_FILE "..\X.SuperResolution\X.SuperResolution.csproj"
-!define DEFAULT_PUBLISH_DIR "..\X.SuperResolution\bin\Release\win-x64\publish"
-!define GENERATED_METADATA "Generated.AppInfo.nsh"
-!define WIZARD_IMAGE_SOURCE "logo.jpg"
-!define WIZARD_IMAGE "Generated.WizardImage.bmp"
-!define WELCOME_IMAGE_WIDTH 98u
-!define WELCOME_CONTENT_X 108u
-!define WELCOME_CONTENT_WIDTH 244u
+!ifndef PUBLISH_DIR
+    !define PUBLISH_DIR "..\artifacts\publish\win-x64-full"
+!endif
+!ifndef CONFIGURATION
+    !define CONFIGURATION "Release"
+!endif
 
-!system 'powershell -NoProfile -ExecutionPolicy Bypass -File "Generate-NsisMetadata.ps1" -ProjectPath "${PROJECT_FILE}" -PublishDir "${DEFAULT_PUBLISH_DIR}" -OutputPath "${GENERATED_METADATA}"'
-!system 'powershell -NoProfile -ExecutionPolicy Bypass -File "Prepare-NsisAssets.ps1" -LogoPath "${WIZARD_IMAGE_SOURCE}" -OutputPath "${WIZARD_IMAGE}"'
-!include "${GENERATED_METADATA}"
-
-!define INSTALLER_OUTPUT_DIR "..\artifacts\installer"
-!system 'powershell -NoProfile -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force -Path \"${INSTALLER_OUTPUT_DIR}\" | Out-Null"'
-
-!include "MUI2.nsh"
-!include "FileFunc.nsh"
+; Direct compilation also regenerates all metadata, file lists and the native skin.
+!system 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "Prepare-Nsis.ps1" -PublishDir "${PUBLISH_DIR}" -Configuration "${CONFIGURATION}" -NsisDir "${NSISDIR}"' = 0
+!include "generated\Generated.AppInfo.nsh"
+!include "generated\Generated.Payload.nsh"
 !include "LogicLib.nsh"
-!include "nsDialogs.nsh"
-!include "WinMessages.nsh"
-
-!define MUI_ABORTWARNING
-!define MUI_ICON "..\X.SuperResolution\Assets\logo.ico"
-!define MUI_UNICON "..\X.SuperResolution\Assets\logo.ico"
-!define MUI_FINISHPAGE_RUN "$INSTDIR\${APP_EXE}"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch ${APP_NAME}"
-!define MUI_FINISHPAGE_LINK "${APP_REPOSITORY_URL}"
-!define MUI_FINISHPAGE_LINK_LOCATION "${APP_REPOSITORY_URL}"
-!define MUI_LANGDLL_REGISTRY_ROOT HKCU
-!define MUI_LANGDLL_REGISTRY_KEY "Software\${APP_NAME}"
-!define MUI_LANGDLL_REGISTRY_VALUENAME "InstallerLanguage"
+!include "FileFunc.nsh"
+!include "x64.nsh"
+!include "WinVer.nsh"
+!addplugindir /x86-unicode "generated"
 
 Name "${APP_NAME}"
-OutFile "${INSTALLER_OUTPUT_DIR}\${APP_NAME}-Setup-${APP_VERSION}.exe"
+OutFile "${APP_INSTALLER_PATH}"
+Icon "${APP_ICON}"
+UninstallIcon "${APP_ICON}"
 InstallDir "$LOCALAPPDATA\Programs\${APP_NAME}"
 InstallDirRegKey HKCU "Software\${APP_NAME}" "InstallDir"
 RequestExecutionLevel user
+SilentInstall normal
+SilentUnInstall normal
+AutoCloseWindow true
+AllowSkipFiles off
 ShowInstDetails nevershow
 ShowUninstDetails nevershow
-BrandingText "${APP_NAME}"
-XPStyle on
-InstallColors 68217A FFFFFF
+LoadLanguageFile "${NSISDIR}\Contrib\Language files\SimpChinese.nlf"
 
 VIProductVersion "${APP_VERSION4}"
-VIAddVersionKey /LANG=1033 "ProductName" "${APP_NAME}"
-VIAddVersionKey /LANG=1033 "CompanyName" "${APP_COMPANY}"
-VIAddVersionKey /LANG=1033 "LegalCopyright" "${APP_COPYRIGHT}"
-VIAddVersionKey /LANG=1033 "FileDescription" "${APP_NAME} Setup"
-VIAddVersionKey /LANG=1033 "FileVersion" "${APP_VERSION}"
-VIAddVersionKey /LANG=1033 "ProductVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=2052 "ProductName" "${APP_PRODUCT}"
+VIAddVersionKey /LANG=2052 "CompanyName" "${APP_COMPANY}"
+VIAddVersionKey /LANG=2052 "LegalCopyright" "${APP_COPYRIGHT}"
+VIAddVersionKey /LANG=2052 "FileDescription" "${APP_NAME} 安装程序"
+VIAddVersionKey /LANG=2052 "FileVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=2052 "ProductVersion" "${APP_VERSION}"
 
-!if /FileExists "${APP_PUBLISH_DIR}\${APP_EXE}"
-!else
-    !error "Publish output not found. Run dotnet publish before building installer: ${APP_PUBLISH_DIR}\${APP_EXE}"
-!endif
+!define APP_REGKEY "Software\${APP_NAME}"
+!define UNINSTALL_REGKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+Var Headless
+Var DesktopShortcut
+Var FailureText
+Var LaunchApp
 
-Page custom ModernWelcomePageCreate ModernWelcomePageLeave
-!insertmacro MUI_PAGE_DIRECTORY
-!insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_PAGE_FINISH
+; NSIS owns extraction and registration. The plugin owns the entire visible window.
+; Switching the engine to silent in .onInit prevents any stock wizard from flashing.
+Page instfiles
+UninstPage instfiles
 
-!insertmacro MUI_UNPAGE_CONFIRM
-!insertmacro MUI_UNPAGE_INSTFILES
-
-!insertmacro MUI_LANGUAGE "SimpChinese"
-!insertmacro MUI_LANGUAGE "English"
-
-LangString WelcomeVersion ${LANG_SIMPCHINESE} "版本 ${APP_VERSION}"
-LangString WelcomeVersion ${LANG_ENGLISH} "Version ${APP_VERSION}"
-LangString WelcomeInstallText ${LANG_SIMPCHINESE} "此向导将为当前用户安装 ${APP_NAME}。$\r$\n$\r$\n你可以在下一页更改安装位置。"
-LangString WelcomeInstallText ${LANG_ENGLISH} "This wizard will install ${APP_NAME} for the current user.$\r$\n$\r$\nInstall location can be changed on the next page."
-LangString UninstallFailedText ${LANG_SIMPCHINESE} "旧版本未能完成卸载，安装程序将退出。"
-LangString UninstallFailedText ${LANG_ENGLISH} "The installed version was not removed. Setup will exit."
+!macro SkinProgress Percent Detail
+    ${If} $Headless != 1
+        InstallerSkin::Update /NOUNLOAD "${Percent}" "${Detail}"
+    ${EndIf}
+!macroend
 
 Function .onInit
-    !insertmacro MUI_LANGDLL_DISPLAY
-
-    ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString"
-    ${If} $0 == ""
-        ReadRegStr $0 HKCU "Software\${APP_NAME}" "InstallDir"
-        ${If} $0 != ""
-            StrCpy $0 "$\"$0\Uninstall.exe$\""
+    StrCpy $Headless 0
+    IfSilent 0 +2
+        StrCpy $Headless 1
+    SetSilent silent
+    SetShellVarContext current
+    SetRegView 64
+    StrCpy $DesktopShortcut 1
+    ${IfNot} ${AtLeastWin10}
+    ${OrIfNot} ${RunningX64}
+        ${If} $Headless != 1
+            MessageBox MB_OK|MB_ICONSTOP "X.SuperResolution 需要 Windows 10 或更高版本的 64 位系统。"
         ${EndIf}
+        SetErrorLevel 1633
+        Quit
     ${EndIf}
-
-    ${If} $0 != ""
-        DetailPrint "Existing ${APP_NAME} installation found. Uninstalling previous version..."
-        ExecWait '$0 /S' $1
-        ReadRegStr $2 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString"
-        ${If} $2 != ""
-            MessageBox MB_ICONSTOP "$(UninstallFailedText)"
-            Abort
-        ${EndIf}
-    ${EndIf}
-FunctionEnd
-
-Function ModernWelcomePageCreate
     InitPluginsDir
-    File "/oname=$PLUGINSDIR\WizardImage.bmp" "${WIZARD_IMAGE}"
-
-    nsDialogs::Create 1018
-    Pop $0
-    ${If} $0 == error
-        Abort
+    InstallerSkin::Configure /NOUNLOAD "${APP_REGKEY}" "X.Lucifer.SuperResolution"
+    File "/oname=$PLUGINSDIR\logo.ico" "${APP_ICON}"
+    File "/oname=$PLUGINSDIR\payload-manifest.txt" "generated\payload-manifest.txt"
+    ${If} $Headless != 1
+        InstallerSkin::Show /NOUNLOAD "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR\logo.ico" "install" "${APP_REQUIRED_MB}"
+        Pop $0
+        Pop $INSTDIR
+        Pop $DesktopShortcut
+        ${If} $0 != "install"
+            InstallerSkin::Close
+            SetErrorLevel 1602
+            Quit
+        ${EndIf}
     ${EndIf}
-
-    SetCtlColors $0 0x202020 0xFFFFFF
-
-    ${NSD_CreateBitmap} 0 0 ${WELCOME_IMAGE_WIDTH} 100% ""
-    Pop $1
-    ${NSD_SetImage} $1 "$PLUGINSDIR\WizardImage.bmp" $4
-
-    ${NSD_CreateLabel} ${WELCOME_CONTENT_X} 12u ${WELCOME_CONTENT_WIDTH} 18u "${APP_NAME}"
-    Pop $2
-    SetCtlColors $2 0x202020 0xFFFFFF
-    CreateFont $3 "Segoe UI" 13 700
-    SendMessage $2 ${WM_SETFONT} $3 1
-
-    ${NSD_CreateLabel} ${WELCOME_CONTENT_X} 32u ${WELCOME_CONTENT_WIDTH} 11u "$(WelcomeVersion)"
-    Pop $2
-    SetCtlColors $2 0x404040 0xFFFFFF
-
-    ${NSD_CreateLabel} ${WELCOME_CONTENT_X} 76u ${WELCOME_CONTENT_WIDTH} 54u "$(WelcomeInstallText)"
-    Pop $2
-    SetCtlColors $2 0x202020 0xFFFFFF
-    CreateFont $3 "Segoe UI" 10 400
-    SendMessage $2 ${WM_SETFONT} $3 1
-
-    ${NSD_CreateLabel} ${WELCOME_CONTENT_X} 140u ${WELCOME_CONTENT_WIDTH} 44u "${APP_COPYRIGHT}"
-    Pop $2
-    SetCtlColors $2 0x606060 0xFFFFFF
-
-    nsDialogs::Show
+    InstallerSkin::Validate /NOUNLOAD "$INSTDIR" "install" "${APP_REQUIRED_MB}"
+    Pop $FailureText
+    ${If} $FailureText != ""
+        Call ReportFailure
+        Quit
+    ${EndIf}
 FunctionEnd
 
-Function ModernWelcomePageLeave
+Function ReportFailure
+    ${If} $Headless != 1
+        InstallerSkin::Finish /NOUNLOAD "error" "$FailureText"
+        Pop $0
+    ${EndIf}
+    InstallerSkin::Close
+    SetErrorLevel 1603
 FunctionEnd
 
-Section "Install ${APP_NAME}" SecInstall
+Section "Install"
+    !insertmacro SkinProgress 2 "正在准备安装目录…"
+    ClearErrors
+    CreateDirectory "$INSTDIR"
+    ${If} ${Errors}
+        StrCpy $FailureText "无法创建安装目录，请检查目录权限并重新安装。"
+        Goto install_failed
+    ${EndIf}
+    InstallerSkin::Prune /NOUNLOAD "$INSTDIR" "$PLUGINSDIR\payload-manifest.txt"
+    Pop $FailureText
+    ${If} $FailureText != ""
+        Goto install_failed
+    ${EndIf}
+    ClearErrors
+    CopyFiles /SILENT "$PLUGINSDIR\payload-manifest.txt" "$INSTDIR\install-manifest.txt"
+    IfErrors install_failed
+    SetOverwrite on
+    !insertmacro InstallPayload
+    !insertmacro SkinProgress 95 "正在创建快捷方式…"
     SetOutPath "$INSTDIR"
-    File /r "${APP_PUBLISH_DIR}\*.*"
-
     WriteUninstaller "$INSTDIR\Uninstall.exe"
-    WriteRegStr HKCU "Software\${APP_NAME}" "InstallDir" "$INSTDIR"
-
+    IfErrors install_failed
+    Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
+    ClearErrors
     CreateDirectory "$SMPROGRAMS\${APP_NAME}"
     CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
-    CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
-
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayVersion" "${APP_VERSION}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "Publisher" "${APP_COMPANY}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "URLInfoAbout" "${APP_REPOSITORY_URL}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoModify" 1
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoRepair" 1
-
-    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
-    WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "EstimatedSize" "$0"
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk" "$INSTDIR\Uninstall.exe"
+    ${If} $DesktopShortcut == 1
+        CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+    ${Else}
+        IfFileExists "$DESKTOP\${APP_NAME}.lnk" 0 +2
+            Delete "$DESKTOP\${APP_NAME}.lnk"
+    ${EndIf}
+    IfErrors install_failed
+    !insertmacro SkinProgress 98 "正在完成安装…"
+    WriteRegStr HKCU "${APP_REGKEY}" "InstallDir" "$INSTDIR"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "DisplayVersion" "${APP_VERSION}"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "Publisher" "${APP_COMPANY}"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "URLInfoAbout" "${APP_REPOSITORY_URL}"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "DisplayIcon" "$INSTDIR\${APP_EXE},0"
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "UninstallString" '$\"$INSTDIR\Uninstall.exe$\"'
+    WriteRegStr HKCU "${UNINSTALL_REGKEY}" "QuietUninstallString" '$\"$INSTDIR\Uninstall.exe$\" /S'
+    WriteRegDWORD HKCU "${UNINSTALL_REGKEY}" "NoModify" 1
+    WriteRegDWORD HKCU "${UNINSTALL_REGKEY}" "NoRepair" 1
+    WriteRegDWORD HKCU "${UNINSTALL_REGKEY}" "EstimatedSize" ${APP_SIZE_KB}
+    IfErrors install_failed
+    StrCpy $LaunchApp 0
+    ${If} $Headless != 1
+        InstallerSkin::Finish /NOUNLOAD "success" ""
+        Pop $LaunchApp
+    ${EndIf}
+    ; Release the application's single-instance mutex before launching it.
+    InstallerSkin::Close
+    ${If} $LaunchApp == 1
+        Exec '"$INSTDIR\${APP_EXE}"'
+    ${EndIf}
+    SetErrorLevel 0
+    Goto install_done
+install_failed:
+    ${If} $FailureText == ""
+        StrCpy $FailureText "无法写入应用文件。请确认磁盘空间充足、目录可写且 X.SuperResolution 已退出，然后重新安装。"
+    ${EndIf}
+    Call ReportFailure
+    Quit
+install_done:
 SectionEnd
 
+Function un.onInit
+    StrCpy $Headless 0
+    IfSilent 0 +2
+        StrCpy $Headless 1
+    SetSilent silent
+    SetShellVarContext current
+    SetRegView 64
+    InitPluginsDir
+    InstallerSkin::Configure /NOUNLOAD "${APP_REGKEY}" "X.Lucifer.SuperResolution"
+    File "/oname=$PLUGINSDIR\logo.ico" "${APP_ICON}"
+    ${If} $Headless != 1
+        InstallerSkin::Show /NOUNLOAD "${APP_VERSION}" "$INSTDIR" "$PLUGINSDIR\logo.ico" "uninstall" "0"
+        Pop $0
+        Pop $INSTDIR
+        Pop $DesktopShortcut
+        ${If} $0 != "install"
+            InstallerSkin::Close
+            SetErrorLevel 1602
+            Quit
+        ${EndIf}
+    ${EndIf}
+    InstallerSkin::Validate /NOUNLOAD "$INSTDIR" "uninstall" "0"
+    Pop $FailureText
+    ${If} $FailureText != ""
+        Call un.ReportFailure
+        Quit
+    ${EndIf}
+FunctionEnd
+
+Function un.ReportFailure
+    ${If} $Headless != 1
+        InstallerSkin::Finish /NOUNLOAD "error" "$FailureText"
+        Pop $0
+    ${EndIf}
+    InstallerSkin::Close
+    SetErrorLevel 1603
+FunctionEnd
+
 Section "Uninstall"
+    !insertmacro SkinProgress 10 "正在移除应用文件…"
+    ClearErrors
+    !insertmacro UninstallPayload
+    ${If} ${Errors}
+        StrCpy $FailureText "部分应用文件无法移除。请退出 X.SuperResolution 并检查目录权限后重试。"
+        Call un.ReportFailure
+        Quit
+    ${EndIf}
+    !insertmacro RemoveEmptyPayloadDirectories
+    !insertmacro SkinProgress 85 "正在清理快捷方式…"
     Delete "$DESKTOP\${APP_NAME}.lnk"
     Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
-    Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
+    Delete "$SMPROGRAMS\${APP_NAME}\卸载 ${APP_NAME}.lnk"
     RMDir "$SMPROGRAMS\${APP_NAME}"
-
-    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
-    DeleteRegKey HKCU "Software\${APP_NAME}"
-
-    RMDir /r "$INSTDIR"
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${APP_NAME}"
+    DeleteRegKey HKCU "${UNINSTALL_REGKEY}"
+    DeleteRegKey HKCU "${APP_REGKEY}"
+    Delete "$INSTDIR\install-manifest.txt"
+    Delete "$INSTDIR\Uninstall.exe"
+    SetOutPath "$TEMP"
+    ; Never recursively delete INSTDIR or APPDATA: downloaded cores and personal files survive.
+    RMDir "$INSTDIR"
+    ${If} $Headless != 1
+        InstallerSkin::Finish /NOUNLOAD "success" ""
+        Pop $0
+    ${EndIf}
+    InstallerSkin::Close
+    SetErrorLevel 0
 SectionEnd

@@ -8,6 +8,13 @@
         <AvaloniaCompileEnable>true</AvaloniaCompileEnable>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+        <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+        <PublishTrimmed>false</PublishTrimmed>
+    </PropertyGroup>
+
     <ItemGroup>
         <AvaloniaResource Include="Assets\**"/>
     </ItemGroup>

@@ -1,0 +1,9 @@
+﻿LIBRARY InstallerSkin
+EXPORTS
+    Configure
+    Show
+    Update
+    Finish
+    Close
+    Validate
+    Prune
